@@ -1,0 +1,41 @@
+[project]
+name = "jaxish"
+version = "0.1.0"
+description = "A minimal JAX-like Python package."
+authors = [{ name = "Colm Talbot", email = "talbotcolm@gmail.com" }]
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = ["array_api_compat", "numpy"]
+
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project.optional-dependencies]
+jax = ["jax"]
+cupy = ["cupy"]
+mlx = ["mlx"]
+test = ["pytest", "pytest-cov"]
+
+[tool.setuptools]
+packages = ["jaxish"]
+
+[tool.setuptools.package-dir]
+jaxish = "src"
+
+[tool.ruff]
+line-length = 88
+lint.extend-select = ["I"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+
+[tool.pytest.ini_options]
+addopts = "--cov=src --cov-report=term-missing"
+testpaths = ["src/test"]
+
+[tool.coverage.run]
+omit = ["src/test/*"]
