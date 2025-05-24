@@ -1,3 +1,4 @@
+from functools import partial
 from unittest import mock
 
 import numpy as np
@@ -52,6 +53,7 @@ def test_jit_returns_correct_value(xp):
     result = f(arr)
     expected = (arr**2).sum()
     assert np.allclose(result, expected), f"Expected {expected}, got {result}"
+    assert array_namespace(result) == xp
 
 
 def test_jit_with_float_argument_default_backend():
@@ -69,6 +71,21 @@ def test_jit_with_float_argument_and_explicit_backend(xp):
     def f(x):
         return x * x
 
-    result = f(xp.array(3.0), xp=xp)
-    assert result == 9.0
-    assert array_namespace(result) == xp
+    f = partial(f, xp=xp)
+    _generic_calls_compile(xp, f)
+
+
+def test_jit_calls_backend_compile_with_function_default(xp):
+    def f(x):
+        return (x**2).sum()
+
+    f = jit(f, xp=xp)
+    _generic_calls_compile(xp, f)
+
+
+def test_jit_with_float_argument_and_default_backend_set(xp):
+    @partial(jit, xp=xp)
+    def f(x):
+        return x * x
+
+    _generic_calls_compile(xp, f)

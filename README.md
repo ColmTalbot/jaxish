@@ -9,11 +9,13 @@ A drop-in replacement for `jax` operations that are not available in, e.g., `num
 | `jit`   | No-op | ✔️   | ✔️   | No-op |
 | `grad`  | ❌    | ✔️   | ✔️   | ❌   |
 | `scan`  | ✔️    | ✔️   | ✔️   | ✔️   |
+| `vmap`  | ✔️    | ✔️   | ✔️   | ✔️   |
 
 - **jit**: Just-in-time compilation using `jax.jit` or `mlx.core.compile` if available, otherwise a no-op.
 - **grad**: Differentiation using `jax.grad` or `mlx.core.grad` if available. Raises `NotImplementedError` for other backends.
 - **scan**: Functional scan operation, implemented for all backends. This is not
-optimized for anything other than `jax`, but it is a drop-in replacement.
+  optimized for anything other than `jax`, but it is a drop-in replacement.
+- **vmap**: Vectorized mapping using `jax.vmap` or `mlx.core.vmap` if available, otherwise an unoptimized Python fallback for other backends.
 
 ## Installation
 
@@ -66,6 +68,26 @@ xs = np.array([2.0, 3.0, 4.0])
 final_carry, ys = lax.scan(f, carry, xs)
 print(final_carry)  # 10.0
 print(ys)           # [2. 6. 24.]
+```
+
+### Vmap
+```python
+from jaxish import vmap
+import numpy as np
+
+@vmap
+def f(x):
+    return x * 2
+
+arr = np.array([1, 2, 3])
+print(f(arr))  # [2 4 6]
+
+# With JAX
+import jax.numpy as jnp
+@vmap
+def f_jax(x):
+    return x * 2
+print(f_jax(jnp.array([1, 2, 3])))  # [2 4 6]
 ```
 
 ## Testing

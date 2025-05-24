@@ -13,10 +13,11 @@ def jit(func, *jit_args, **jit_kwargs):
     This also allows arbitrary arguments to be passed through,
     e.g., to specify static arguments.
     """
+    default_xp = jit_kwargs.pop("xp", np)
 
     @functools.wraps(func)
     def wrapped(*args, **kwargs):
-        xp = kwargs.pop("xp", np)
+        xp = kwargs.pop("xp", default_xp)
         if len(args) > 0 and is_array_api_obj(args[0]):
             xp = array_namespace(args[0])
 
