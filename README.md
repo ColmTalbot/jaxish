@@ -1,21 +1,30 @@
 # jaxish
 
-A drop-in replacement for `jax` operations that are not available in, e.g., `numpy`.
+A drop-in replacement for `jax` operations that are not available in, e.g., `numpy` to enable use of `jax` features while still maintaining compatibility with other libraries.
+
+This library is at a _very_ early stage of development and functionality is limited.
+If this is useful to you and you would like to see more features, please open an issue or a pull request.
+
+## Scope
+
+The intended eventual scope is to provide a drop-in replacement for the functions in the `jax` top-level and `jax.lax` namespaces.
+For `jax.numpy`, similar functionality is provided via the [Python array API](https://data-apis.org/array-api-compat/).
 
 ## Supported Features
 
-| Feature | NumPy | JAX | MLX | CuPy |
-|---------|-------|-----|-----|------|
-| `jit`   | No-op | ✔️   | ✔️   | No-op |
-| `grad`  | ❌    | ✔️   | ✔️   | ❌   |
-| `scan`  | ✔️    | ✔️   | ✔️   | ✔️   |
-| `vmap`  | ✔️    | ✔️   | ✔️   | ✔️   |
+| Feature     | NumPy | JAX | MLX | CuPy |
+|-------------|:-----:|:---:|:---:|:----:|
+| `jit`       | 🚫    | ⚡   | ⚡   | 🚫   |
+| `grad`      | ❌    | ⚡   | ⚡   | ❌   |
+| `scan`      | 🐢    | ⚡   | 🐢   | 🐢   |
+| `vmap`      | 🐢    | ⚡   | ⚡   | 🐢   |
+| `while_loop`| ⏳    | ⏳   | ⏳   | ⏳   |
 
-- **jit**: Just-in-time compilation using `jax.jit` or `mlx.core.compile` if available, otherwise a no-op.
-- **grad**: Differentiation using `jax.grad` or `mlx.core.grad` if available. Raises `NotImplementedError` for other backends.
-- **scan**: Functional scan operation, implemented for all backends. This is not
-  optimized for anything other than `jax`, but it is a drop-in replacement.
-- **vmap**: Vectorized mapping using `jax.vmap` or `mlx.core.vmap` if available, otherwise an unoptimized Python fallback for other backends.
+- ⚡ **Native implementation** (uses backend's optimized version)
+- 🐢 **Unoptimized fallback** (Python implementation, not optimized)
+- 🚫 **No-op** (function does nothing)
+- ❌ **Not implemented** (raises an error)
+- ⏳ **Not yet implemented** (planned, not available)
 
 ## Installation
 
@@ -70,7 +79,7 @@ print(final_carry)  # 10.0
 print(ys)           # [2. 6. 24.]
 ```
 
-### Vmap
+### vmap
 ```python
 from jaxish import vmap
 import numpy as np
