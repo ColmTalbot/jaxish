@@ -2,7 +2,8 @@ from functools import partial
 
 import numpy as np
 import pytest
-from jaxish.vmap import vmap
+
+from .. import vmap
 
 
 def test_vmap(xp):
