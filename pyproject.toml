@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "A minimal JAX-like Python package."
 authors = [{ name = "Colm Talbot", email = "talbotcolm@gmail.com" }]
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 dependencies = ["array_api_compat", "numpy"]
 
 [build-system]
