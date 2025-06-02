@@ -16,9 +16,11 @@ For `jax.numpy`, similar functionality is provided via the [Python array API](ht
 |-------------|:-----:|:---:|:---:|:----:|
 | `jit`       | 🚫    | ⚡   | ⚡   | 🚫   |
 | `grad`      | ❌    | ⚡   | ⚡   | ❌   |
-| `scan`      | 🐢    | ⚡   | 🐢   | 🐢   |
 | `vmap`      | 🐢    | ⚡   | ⚡   | 🐢   |
-| `while_loop`| ⏳    | ⏳   | ⏳   | ⏳   |
+| `lax.cond`       | 🐢    | ⚡   | 🐢   | 🐢   |
+| `lax.scan`       | 🐢    | ⚡   | 🐢   | 🐢   |
+| `lax.select`     | 🐢    | ⚡   | 🐢   | 🐢   |
+| `lax.while_loop` | 🐢    | ⚡   | 🐢   | 🐢   |
 
 - ⚡ **Native implementation** (uses backend's optimized version)
 - 🐢 **Unoptimized fallback** (Python implementation, not optimized)
@@ -65,7 +67,7 @@ g = grad(f)
 print(g(jnp.array([1.0, 2.0, 3.0])))  # [2. 4. 6.]
 ```
 
-### Scan
+### lax
 ```python
 from jaxish import lax
 import numpy as np
@@ -77,6 +79,18 @@ xs = np.array([2.0, 3.0, 4.0])
 final_carry, ys = lax.scan(f, carry, xs)
 print(final_carry)  # 10.0
 print(ys)           # [2. 6. 24.]
+
+result = lax.cond(True, lambda x: x + 1, lambda x: x - 1, xs)  # array([3., 4., 5.])
+
+pred = np.array([True, False])
+on_true = np.array([1, 2])
+on_false = np.array([10, 20])
+out = lax.select(pred, on_true, on_false)  # array([1, 20])
+
+# while_loop
+def cond_fun(val): return val < 5
+def body_fun(val): return val + 1
+final = lax.while_loop(cond_fun, body_fun, 0)  # 5
 ```
 
 ### vmap
