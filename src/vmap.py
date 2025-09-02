@@ -1,7 +1,7 @@
 from functools import partial, wraps
 from inspect import signature
 
-from array_api_compat import array_namespace
+from array_api_compat import array_namespace, is_array_api_obj
 
 __all__ = ["vmap"]
 
@@ -22,6 +22,16 @@ def advance_axis(arr, n):
     return xp.moveaxis(arr, axes, new_axes)
 
 
+def _swap_dict_keys_values(d):
+    """
+    Given a dictionary or arrays return an iterable of dicts where each value
+    is a scalar.
+    """
+    keys = list(d.keys())
+    output = [{key: d[key][ii] for key in keys} for ii in range(len(d[keys[0]]))]
+    return output
+
+
 def _vmap(func, in_axes=0, out_axes=0):
     parameters = signature(func).parameters
 
@@ -30,14 +40,19 @@ def _vmap(func, in_axes=0, out_axes=0):
 
     @wraps(func)
     def wrapper(*args, **kwargs):
-        if len(args) != len(in_axes):
-            raise ValueError(
-                f"Expected to map over {len(parameters)} positional arguments,"
-                f" but got {len(args)} positional arguments"
-            )
+        if not all(is_array_api_obj(arg) for arg in args):
+            from .tree import tree_flatten, tree_unflatten
 
-        args = tuple(arg.swapaxes(axis, 0) for axis, arg in zip(in_axes, args))
-        xp = array_namespace(args[0])
+            args, tree = tree_flatten(args)
+        else:
+
+            def tree_unflatten(tree, leaves):
+                return leaves
+
+            tree = None
+
+        # args = tuple(arg.swapaxes(axis, 0) for axis, arg in zip(in_axes, args))
+        xp = array_namespace(*args)
 
         map_length = {len(arg) for arg in args}
         if len(map_length) != 1:
@@ -47,8 +62,11 @@ def _vmap(func, in_axes=0, out_axes=0):
         map_length = map_length.pop()
 
         output = []
+        ii = 0
         for ii in range(map_length):
-            output.append(func(*[arg[ii] for arg in args], **kwargs))
+            output.append(
+                func(*tree_unflatten(tree, [arg[ii] for arg in args]), **kwargs)
+            )
 
         if isinstance(output[0], tuple):
             if isinstance(out_axes, int):
@@ -75,7 +93,21 @@ def vmap(func, in_axes=0, out_axes=0, **vmap_kwargs):
 
     @wraps(func)
     def wrapped(*args, **kwargs):
-        xp = array_namespace(*args)
+        if not all(is_array_api_obj(arg) for arg in args):
+            from .tree import tree_flatten
+            # try:
+            #     from jax.tree_util import tree_flatten
+            # except ImportError:
+            #     print("vmap over non-array types requires jax")
+            #     raise
+
+            flat, _ = tree_flatten(args)
+            print(type(flat))
+            xp = array_namespace(*flat)
+        # if len(args) == 1 and isinstance(args[0], dict):
+        #     xp = array_namespace(*args[0].values())
+        else:
+            xp = array_namespace(*args)
 
         if "jax" in xp.__name__:
             from jax import vmap as vmap_func

@@ -1,9 +1,20 @@
+import dataclasses
+from collections import namedtuple
 from functools import partial
 
 import numpy as np
 import pytest
 
 from .. import vmap
+
+# Test structures
+Point = namedtuple("Point", ["x", "y"])
+
+
+@dataclasses.dataclass
+class State:
+    position: float
+    velocity: float
 
 
 def test_vmap(xp):
@@ -147,3 +158,154 @@ def test_vmap_specify_multiple_out_axis(xp):
     out, out2 = f(arr, arr2)
     assert np.allclose(out, arr * 2 + arr2)
     assert np.allclose(out2.swapaxes(0, 1), arr * 3 + arr2)
+
+
+def test_vmap_namedtuple_input(xp):
+    """Test vmap with namedtuple inputs."""
+    if xp.__name__ == "mlx.core":
+        pytest.skip(reason="Not supported in mlx")
+
+    @vmap
+    def f(point):
+        print(point, type(point))
+        return point.x + point.y
+
+    points = Point(xp.arange(1, 4), xp.arange(2, 5))
+    out = f(points)
+    expected = xp.array([3, 5, 7])
+    assert np.allclose(out, expected)
+
+
+def test_vmap_namedtuple_output(xp):
+    """Test vmap with namedtuple outputs."""
+
+    @vmap
+    def f(x, y):
+        return Point(x * 2, y + 1)
+
+    x = xp.array([1, 2, 3])
+    y = xp.array([4, 5, 6])
+    out = f(x, y)
+
+    # Output should be a namedtuple with arrays
+    assert hasattr(out, "x")
+    assert hasattr(out, "y")
+    assert np.allclose(out.x, xp.array([2, 4, 6]))
+    assert np.allclose(out.y, xp.array([5, 6, 7]))
+
+
+def test_vmap_dataclass_input(xp):
+    """Test vmap with dataclass inputs."""
+    if xp.__name__ == "mlx.core":
+        pytest.skip(reason="Not supported in mlx")
+
+    @vmap
+    def f(state):
+        return state.position + state.velocity
+
+    states = [State(1.0, 0.5), State(2.0, 1.0), State(3.0, 1.5)]
+    out = f(states)
+    expected = xp.array([1.5, 3.0, 4.5])
+    assert np.allclose(out, expected)
+
+
+def test_vmap_dataclass_output(xp):
+    """Test vmap with dataclass outputs."""
+    if xp.__name__ == "mlx.core":
+        pytest.skip(reason="Not supported in mlx")
+
+    @vmap
+    def f(pos, vel):
+        return State(pos * 2, vel + 0.1)
+
+    pos = xp.array([1.0, 2.0, 3.0])
+    vel = xp.array([0.5, 1.0, 1.5])
+    out = f(pos, vel)
+
+    # Output should be a dataclass with arrays
+    assert hasattr(out, "position")
+    assert hasattr(out, "velocity")
+    assert np.allclose(out.position, xp.array([2.0, 4.0, 6.0]))
+    assert np.allclose(out.velocity, xp.array([0.6, 1.1, 1.6]))
+
+
+def test_vmap_mixed_container_types(xp):
+    """Test vmap with mixed container types in input/output."""
+
+    @vmap
+    def f(data):
+        # data is a dict with mixed types
+        point = data["point"]
+        state = data["state"]
+        return {
+            "sum": point.x + point.y + state.position,
+            "product": point.x * state.velocity,
+        }
+
+    data = [
+        {"point": Point(1, 2), "state": State(10.0, 0.5)},
+        {"point": Point(3, 4), "state": State(20.0, 1.0)},
+        {"point": Point(5, 6), "state": State(30.0, 1.5)},
+    ]
+
+    out = f(data)
+
+    assert "sum" in out
+    assert "product" in out
+    assert np.allclose(out["sum"], xp.array([13.0, 27.0, 41.0]))
+    assert np.allclose(out["product"], xp.array([0.5, 3.0, 7.5]))
+
+
+def test_vmap_nested_structures(xp):
+    """Test vmap with deeply nested structures."""
+
+    @vmap
+    def f(nested):
+        # nested = {'layer1': {'weights': Point, 'bias': float}, 'layer2': State}
+        w = nested["layer1"]["weights"]
+        b = nested["layer1"]["bias"]
+        s = nested["layer2"]
+        return w.x * s.position + w.y * s.velocity + b
+
+    nested_data = {
+        "layer1": {
+            "weights": Point(xp.array([1, 2]), xp.array([3, 4])),
+            "bias": xp.array([0.1, 1.1]),
+        },
+        "layer2": State(xp.array([10.0, 11.0]), xp.array([0.5, 1.5])),
+    }
+
+    out = f(nested_data)
+    expected = xp.array([11.6, 29.1])
+    assert np.allclose(out, expected)
+
+
+def test_vmap_list_of_arrays(xp):
+    """Test vmap with lists containing arrays."""
+
+    @vmap
+    def f(arr_list):
+        return arr_list[0] + arr_list[1]
+
+    data = xp.array([[1, 2], [3, 4], [5, 6]])
+
+    out = f(data)
+    expected = xp.array([3, 7, 11])
+    assert np.allclose(out, expected)
+
+
+def test_vmap_tuple_of_different_types(xp):
+    """Test vmap with tuples containing different types."""
+    if xp.__name__ == "mlx.core":
+        pytest.skip(reason="Named tuple vmap not supported in mlx")
+
+    @vmap
+    def f(mixed_tuple):
+        arr, point = mixed_tuple
+        return arr.sum() + point.x + point.y
+
+    data = (xp.array([1, 2]), Point(xp.array([5, 6]), xp.array([7, 8])))
+
+    out = f(data)
+    expected = xp.array([13, 16])
+    assert np.allclose(out, expected)
